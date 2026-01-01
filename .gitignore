@@ -1,0 +1,8 @@
+
+# secrets / local files
+Backend/.env
+Frontend/.env
+.DS_Store
+
+# private keys
+Backend/src/main/resources/keys/private.pem

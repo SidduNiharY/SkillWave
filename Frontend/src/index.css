@@ -28,3 +28,54 @@ html, body, #root {
     radial-gradient(900px 500px at 80% 0%, rgba(16,185,129,0.18), transparent 55%),
     radial-gradient(900px 600px at 50% 100%, rgba(236,72,153,0.12), transparent 55%);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Cursor follower: simple black dot */
+.sw-cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 999999;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Don't show it on mobile */
+@media (pointer: coarse) {
+  .sw-cursor-dot {
+    display: none;
+  }
+}
+
+/* IMPORTANT:
+   Do NOT hide the real cursor unless you want that effect.
+   If you previously had cursor: none; remove it.
+*/
+/*
+@media (pointer: fine) {
+  html, body, a, button, input, textarea, select {
+    cursor: none;
+  }
+}
+*/

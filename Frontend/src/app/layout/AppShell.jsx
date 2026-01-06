@@ -4,6 +4,7 @@ import Navbar from "./Navbar.jsx";
 import Footer from "./Footer.jsx";
 import { useAuth } from "../providers/AuthProvider.jsx";
 import { setAuthToken } from "../../api/http.js";
+import CursorFollower from "../../components/cursor/CursorFollower.jsx";
 
 export default function AppShell() {
   const { token } = useAuth();
@@ -20,6 +21,7 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-base-200">
+       <CursorFollower />
       <Navbar />
       <main className="container-max py-10">
         <Outlet />

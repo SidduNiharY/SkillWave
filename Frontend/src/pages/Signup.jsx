@@ -10,11 +10,13 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  GraduationCap,
 } from "lucide-react";
 import Button from "../components/ui/Button.jsx";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { signupLocal } from "../lib/api.js";
+import { useAuth } from "../app/providers/AuthProvider.jsx";
 
 /** -------------------------------------------------------
  * Premium Input (floating label + icon + error + hints)
@@ -75,7 +77,7 @@ function PremiumInput({
           name={name}
           type={actualType}
           value={value}
-          placeholder={float ? placeholder : ""} // placeholder only when label floats
+          placeholder={float ? placeholder : ""}
           autoComplete={autoComplete}
           inputMode={inputMode}
           disabled={disabled}
@@ -123,11 +125,74 @@ function PremiumInput({
   );
 }
 
+/** -------------------------------------------------------
+ * Role Picker (Student vs Mentor)
+ * ------------------------------------------------------*/
+function RolePicker({ value, onChange, disabled }) {
+  const options = [
+    {
+      key: "STUDENT",
+      title: "Student",
+      desc: "Learn courses + join mentorship",
+      icon: <Sparkles size={18} />,
+    },
+    {
+      key: "MENTOR",
+      title: "Mentor",
+      desc: "Create courses, mentor & earn",
+      icon: <GraduationCap size={18} />,
+    },
+  ];
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(o.key)}
+            className={[
+              "rounded-2xl border p-4 text-left transition",
+              active
+                ? "border-primary bg-primary/10"
+                : "border-base-300 hover:bg-base-200/50",
+              disabled ? "opacity-60" : "",
+            ].join(" ")}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={[
+                  "grid h-10 w-10 place-items-center rounded-2xl",
+                  active ? "bg-primary text-primary-content" : "bg-base-200",
+                ].join(" ")}
+              >
+                {o.icon}
+              </div>
+              <div className="flex-1">
+                <div className="font-bold">{o.title}</div>
+                <div className="text-sm text-base-content/70">{o.desc}</div>
+                <div className="mt-2 text-xs text-base-content/60">
+                  Role: {o.key}
+                </div>
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Signup() {
   const nav = useNavigate();
+  const { login } = useAuth(); // ✅ if your AuthProvider supports it
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
+    role: "STUDENT", // ✅ default role
     name: "",
     email: "",
     password: "",
@@ -142,7 +207,8 @@ export default function Signup() {
 
     if (name && name.length < 2) e.name = "Name must be at least 2 characters.";
     if (email && !email.includes("@")) e.email = "Enter a valid email.";
-    if (pwd && pwd.length < 6) e.password = "Password must be at least 6 characters.";
+    if (pwd && pwd.length < 6)
+      e.password = "Password must be at least 6 characters.";
 
     return e;
   }, [form]);
@@ -195,15 +261,24 @@ export default function Signup() {
     setLoading(true);
     try {
       const res = await signupLocal({
+        role: form.role, // ✅ SEND ROLE
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
 
-      if (res?.token) localStorage.setItem("skillwave_token", res.token);
+      // ✅ best: let AuthProvider store token + user (if supported)
+      if (res?.token) {
+        login?.(res.token, res.user); // works if your provider supports login(token,user)
+        localStorage.setItem("skillwave_token", res.token);
+      }
 
       toast.success(res?.message || "Account created!");
-      nav("/dashboard");
+
+      // ✅ Role-based redirect (real separation)
+      const role = res?.user?.role || form.role;
+      if (role === "MENTOR") nav("/mentor/onboarding");
+      else nav("/dashboard");
     } catch (err) {
       toast.error(err?.message || "Signup failed");
     } finally {
@@ -243,25 +318,46 @@ export default function Signup() {
               </h1>
 
               <p className="mt-3 text-base-content/70 max-w-xl">
-                Unlock premium courses, live sessions, and 1:1 mentorship. Built to feel fast,
-                modern, and professional.
+                Choose your path: learn as a <b>Student</b> or teach as a{" "}
+                <b>Mentor</b>.
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {[
-                  { icon: <ShieldCheck size={18} />, title: "Secure Auth", desc: "JWT + OAuth supported" },
-                  { icon: <Lock size={18} />, title: "Safe Passwords", desc: "BCrypt hashing (backend)" },
-                  { icon: <Mail size={18} />, title: "Email login", desc: "Simple, frictionless signup" },
-                  { icon: <Sparkles size={18} />, title: "Premium UI", desc: "Smooth UX + animations" },
+                  {
+                    icon: <ShieldCheck size={18} />,
+                    title: "Secure Auth",
+                    desc: "JWT + OAuth supported",
+                  },
+                  {
+                    icon: <Lock size={18} />,
+                    title: "Safe Passwords",
+                    desc: "BCrypt hashing (backend)",
+                  },
+                  {
+                    icon: <Mail size={18} />,
+                    title: "Email login",
+                    desc: "Simple signup flow",
+                  },
+                  {
+                    icon: <Sparkles size={18} />,
+                    title: "Role based",
+                    desc: "Student / Mentor experience",
+                  },
                 ].map((f, i) => (
-                  <div key={i} className="rounded-2xl border border-base-300 bg-base-100/70 p-4">
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-base-300 bg-base-100/70 p-4"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="grid h-10 w-10 place-items-center rounded-2xl bg-base-200">
                         {f.icon}
                       </div>
                       <div>
                         <div className="font-semibold">{f.title}</div>
-                        <div className="text-sm text-base-content/70">{f.desc}</div>
+                        <div className="text-sm text-base-content/70">
+                          {f.desc}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -269,7 +365,11 @@ export default function Signup() {
               </div>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="md" onClick={() => nav("/login")}>
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => nav("/login")}
+                >
                   Already have an account? Login
                 </Button>
                 <Button variant="ghost" size="md" onClick={openGoogle}>
@@ -278,7 +378,8 @@ export default function Signup() {
               </div>
 
               <div className="mt-6 text-xs text-base-content/60">
-                By continuing, you agree to our Terms and Privacy Policy (add later).
+                By continuing, you agree to our Terms and Privacy Policy (add
+                later).
               </div>
             </div>
           </motion.div>
@@ -287,24 +388,47 @@ export default function Signup() {
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 170, damping: 18, delay: 0.05 }}
+            transition={{
+              type: "spring",
+              stiffness: 170,
+              damping: 18,
+              delay: 0.05,
+            }}
             className="rounded-3xl border border-base-300 bg-base-100 shadow-sm"
           >
             <div className="border-b border-base-300 p-6">
-              <div className="text-xs font-semibold text-base-content/60">Create account</div>
-              <div className="mt-1 text-2xl font-extrabold tracking-tight">Sign up</div>
+              <div className="text-xs font-semibold text-base-content/60">
+                Create account
+              </div>
+              <div className="mt-1 text-2xl font-extrabold tracking-tight">
+                Sign up
+              </div>
               <div className="mt-2 text-sm text-base-content/70">
-                Use your email/password or continue with Google.
+                Pick a role, then continue with email/password.
               </div>
             </div>
 
             <div className="p-6">
               <form onSubmit={onSubmit} className="space-y-3">
+                {/* ✅ Role Picker */}
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-base-content/80">
+                    Choose profile
+                  </div>
+                  <RolePicker
+                    value={form.role}
+                    onChange={(role) => setForm((s) => ({ ...s, role }))}
+                    disabled={loading}
+                  />
+                </div>
+
                 <PremiumInput
                   label="Full name"
                   icon={<User2 size={18} />}
                   value={form.name}
-                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, name: e.target.value }))
+                  }
                   placeholder="Your name"
                   autoComplete="name"
                   error={errors.name}
@@ -317,7 +441,7 @@ export default function Signup() {
                   onChange={(e) =>
                     setForm((s) => ({
                       ...s,
-                      email: e.target.value.replace(/\s/g, ""), // remove spaces
+                      email: e.target.value.replace(/\s/g, ""),
                     }))
                   }
                   placeholder="you@example.com"
@@ -331,11 +455,17 @@ export default function Signup() {
                   icon={<Lock size={18} />}
                   type="password"
                   value={form.password}
-                  onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, password: e.target.value }))
+                  }
                   placeholder="Create a password"
                   autoComplete="new-password"
                   error={errors.password}
-                  hint={form.password ? `Strength: ${strengthText}` : "Minimum 6 characters"}
+                  hint={
+                    form.password
+                      ? `Strength: ${strengthText}`
+                      : "Minimum 6 characters"
+                  }
                 />
 
                 {/* strength bar */}
@@ -343,7 +473,9 @@ export default function Signup() {
                   <div className="h-2 w-full overflow-hidden rounded-full bg-base-200">
                     <div
                       className="h-full bg-primary transition-all"
-                      style={{ width: `${(Math.max(1, strength) / 5) * 100}%` }}
+                      style={{
+                        width: `${(Math.max(1, strength) / 5) * 100}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -357,7 +489,7 @@ export default function Signup() {
                     loading={loading}
                     rightIcon={<ArrowRight size={18} />}
                     disabled={!canSubmit || loading}
-                    type="submit" // ✅ THIS IS THE KEY FIX
+                    type="submit"
                   >
                     Create account
                   </Button>

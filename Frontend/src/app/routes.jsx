@@ -18,10 +18,21 @@ import DashboardPage from "../pages/dashboard/DashboardPage.jsx";
 import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
+import MentorCoursesPage from "../pages/mentor/MentorCoursesPage.jsx";
+import MentorCourseCreatePage from "../pages/mentor/MentorCourseCreatePage.jsx";
+
+import DashboardRedirect from "../components/common/DashboardRedirect.jsx";
+import MentorDashboard from "../pages/mentor/MentorDashboard.jsx";
+
+import RoleRoute from "../components/common/RoleRoute.jsx";
+
+
 export default function Routes() {
   return (
-    <AppShell>
-      <RRRoutes>
+    <RRRoutes>
+      {/* 🔑 Layout Route */}
+      <Route element={<AppShell />}>
+        {/* Public */}
         <Route path="/" element={<HomePage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/live" element={<LiveSessionsPage />} />
@@ -34,6 +45,7 @@ export default function Routes() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
+        {/* Protected */}
         <Route
           path="/dashboard"
           element={
@@ -43,8 +55,47 @@ export default function Routes() {
           }
         />
 
+
+        <Route
+          path="/mentor/courses"
+          element={
+            <ProtectedRoute allowRoles={["MENTOR", "ADMIN"]}>
+              <MentorCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mentor/courses/new"
+          element={
+            <ProtectedRoute allowRoles={["MENTOR", "ADMIN"]}>
+              <MentorCourseCreatePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+  path="/dashboard"
+  element={
+    <ProtectedRoute>
+      <DashboardRedirect />
+    </ProtectedRoute>
+  }
+/>
+
+
+<Route
+  path="/mentor/dashboard"
+  element={
+    <RoleRoute allow={["MENTOR", "ADMIN"]}>
+      <MentorDashboard />
+    </RoleRoute>
+  }
+/>
+
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
-      </RRRoutes>
-    </AppShell>
+      </Route>
+    </RRRoutes>
   );
 }

@@ -4,38 +4,26 @@ import com.skillwave.catalog.Course;
 import com.skillwave.catalog.CourseRepository;
 import com.skillwave.catalog.VideoProvider;
 import com.skillwave.catalog.VideoVisibility;
-import com.skillwave.user.Role;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/mentor/courses")
+@Service
 @RequiredArgsConstructor
-public class MentorCourseController {
+public class MentorCourseService {
 
   private final CourseRepository courseRepo;
 
-  @GetMapping("/mine")
-  public List<Course> myCourses(Authentication auth) {
-    Jwt jwt = (Jwt) auth.getPrincipal();
-    requireMentor(jwt);
-
-    Long userId = Long.parseLong(jwt.getSubject());
-    return courseRepo.findByInstructorIdOrderByCreatedAtDesc(userId);
+  @Transactional(readOnly = true)
+  public List<Course> myCourses(Long instructorId) {
+    return courseRepo.findByInstructorIdOrderByCreatedAtDesc(instructorId);
   }
 
-  @PostMapping
-  public Course create(Authentication auth, @RequestBody CreateCourseRequest req) {
-    Jwt jwt = (Jwt) auth.getPrincipal();
-    requireMentor(jwt);
+  @Transactional
+  public Course create(Long instructorId, MentorCourseController.CreateCourseRequest req) {
 
-    Long userId = Long.parseLong(jwt.getSubject());
     YoutubeParse y = YoutubeParse.from(req.youtubeUrl());
 
     Course c = Course.builder()
@@ -45,10 +33,13 @@ public class MentorCourseController {
       .category(trimOrNull(req.category()))
       .level(trimOrNull(req.level()))
       .price(req.price())
-      .currency((req.currency() == null || req.currency().isBlank()) ? "INR" : req.currency().trim().toUpperCase())
+      .currency((req.currency() == null || req.currency().isBlank())
+        ? "INR"
+        : req.currency().trim().toUpperCase()
+      )
       .thumbnailUrl(trimOrNull(req.thumbnailUrl()))
       .published(false)
-      .instructorId(userId)
+      .instructorId(instructorId)
       .videoProvider(VideoProvider.YOUTUBE)
       .videoUrl(y.canonicalUrl())
       .videoId(y.videoId())
@@ -58,17 +49,13 @@ public class MentorCourseController {
     return courseRepo.save(c);
   }
 
-  @PutMapping("/{id}")
-  public Course update(Authentication auth, @PathVariable Long id, @RequestBody UpdateCourseRequest req) {
-    Jwt jwt = (Jwt) auth.getPrincipal();
-    requireMentor(jwt);
+  @Transactional
+  public Course update(Long instructorId, Long courseId, MentorCourseController.UpdateCourseRequest req) {
 
-    Long userId = Long.parseLong(jwt.getSubject());
-
-    Course c = courseRepo.findById(id)
+    Course c = courseRepo.findById(courseId)
       .orElseThrow(() -> new IllegalArgumentException("Course not found"));
 
-    if (!c.getInstructorId().equals(userId)) {
+    if (!c.getInstructorId().equals(instructorId)) {
       throw new IllegalArgumentException("You do not own this course");
     }
 
@@ -101,44 +88,9 @@ public class MentorCourseController {
     return courseRepo.save(c);
   }
 
-  private static void requireMentor(Jwt jwt) {
-    String role = jwt.getClaimAsString("role");
-    if (role == null) throw new IllegalArgumentException("Missing role claim");
-
-    Role r = Role.valueOf(role);
-    if (r != Role.MENTOR && r != Role.ADMIN) {
-      throw new IllegalArgumentException("Mentor access required");
-    }
-  }
-
   private static String trimOrNull(String s) {
     if (s == null) return null;
     String t = s.trim();
     return t.isBlank() ? null : t;
   }
-
-  public record CreateCourseRequest(
-    @NotBlank String title,
-    String subtitle,
-    String description,
-    String category,
-    String level,
-    @NotNull Integer price,
-    String currency,
-    String thumbnailUrl,
-    @NotBlank String youtubeUrl
-  ) {}
-
-  public record UpdateCourseRequest(
-    String title,
-    String subtitle,
-    String description,
-    String category,
-    String level,
-    Integer price,
-    String currency,
-    String thumbnailUrl,
-    String youtubeUrl,
-    Boolean published
-  ) {}
 }

@@ -1,13 +1,15 @@
 import axios from "axios";
 import { toast } from "sonner";
 
-// NOTE:
-// - We export BOTH a named export (`http`) and a default export.
-// - This fixes errors like:
-//   "The requested module '/src/api/http.js' does not provide an export named 'http'"
+/**
+ * http.js
+ * - Exports BOTH named (`http`) and default export for compatibility.
+ * - Supports multiple env var names for base URL.
+ * - Attaches JWT automatically via setAuthToken().
+ * - Handles global 401 (session expired) safely (prevents redirect loop on /login).
+ */
 
 export const http = axios.create({
-  // support either env var name
   baseURL:
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_API_BASE ||
@@ -22,7 +24,7 @@ export function setAuthToken(token) {
   authToken = token || null;
 }
 
-// --- REQUEST "middleware" ---
+// --- REQUEST interceptor ---
 http.interceptors.request.use(
   (config) => {
     // Attach JWT automatically
@@ -30,27 +32,27 @@ http.interceptors.request.use(
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${authToken}`;
     }
-
-    // Optional: request logging
-    // console.log("[HTTP]", config.method?.toUpperCase(), config.url);
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// --- RESPONSE "middleware" ---
+// --- RESPONSE interceptor ---
 http.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
 
-    // Global auth handling
+    // ✅ Global auth handling (avoid infinite redirects)
     if (status === 401) {
-      toast.error("Session expired. Please login again.");
-      // clear token + redirect
       localStorage.removeItem("skillwave_token");
-      window.location.href = "/login";
+
+      // only redirect if we're not already on /login
+      if (window.location.pathname !== "/login") {
+        toast.error("Session expired. Please login again.");
+        window.location.href = "/login";
+      }
+
       return Promise.reject(error);
     }
 

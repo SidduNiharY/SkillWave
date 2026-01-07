@@ -3,13 +3,16 @@ package com.skillwave.catalog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
+  // ✅ public catalog
   List<Course> findByPublishedTrueOrderByCreatedAtDesc();
 
-  List<Course> findByInstructorIdOrderByCreatedAtDesc(Long instructorId);
+  // ✅ public single course (published only)
+  Optional<Course> findByIdAndPublishedTrue(Long id);
 
-  // optional (if you want without ordering)
-  List<Course> findByInstructorId(Long instructorId);
+  // ✅ mentor area (keep ONE naming: instructorId OR mentorId)
+  List<Course> findByInstructorIdOrderByCreatedAtDesc(Long instructorId);
 }

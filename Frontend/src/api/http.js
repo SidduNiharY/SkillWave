@@ -7,6 +7,7 @@ import { toast } from "sonner";
  * - Supports multiple env var names for base URL.
  * - Attaches JWT automatically via setAuthToken().
  * - Handles global 401 (session expired) safely (prevents redirect loop on /login).
+ * - Avoids showing toast/redirect for auth endpoints to reduce noise.
  */
 
 export const http = axios.create({
@@ -32,6 +33,11 @@ http.interceptors.request.use(
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${authToken}`;
     }
+
+    // Optional: default JSON headers (axios usually does this)
+    config.headers = config.headers ?? {};
+    config.headers.Accept = config.headers.Accept || "application/json";
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -42,13 +48,21 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
+    const url = error?.config?.url || "";
+
+    // For login/signup endpoints, DON'T force redirect or "session expired"
+    const isAuthEndpoint =
+      url.includes("/api/auth/login") ||
+      url.includes("/api/auth/signup") ||
+      url.includes("/oauth2") ||
+      url.includes("/login/oauth2");
 
     // ✅ Global auth handling (avoid infinite redirects)
     if (status === 401) {
       localStorage.removeItem("skillwave_token");
 
-      // only redirect if we're not already on /login
-      if (window.location.pathname !== "/login") {
+      // If it's not an auth endpoint, treat as session expired
+      if (!isAuthEndpoint && window.location.pathname !== "/login") {
         toast.error("Session expired. Please login again.");
         window.location.href = "/login";
       }
@@ -63,7 +77,11 @@ http.interceptors.response.use(
       error?.message ||
       "Request failed";
 
-    toast.error(msg);
+    // Avoid noisy toasts for some common cases
+    if (!isAuthEndpoint) {
+      toast.error(msg);
+    }
+
     return Promise.reject(error);
   }
 );

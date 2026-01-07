@@ -27,24 +27,27 @@ public class MentorCourseService {
     YoutubeParse y = YoutubeParse.from(req.youtubeUrl());
 
     Course c = Course.builder()
-      .title(req.title().trim())
-      .subtitle(trimOrNull(req.subtitle()))
-      .description(trimOrNull(req.description()))
-      .category(trimOrNull(req.category()))
-      .level(trimOrNull(req.level()))
-      .price(req.price())
-      .currency((req.currency() == null || req.currency().isBlank())
-        ? "INR"
-        : req.currency().trim().toUpperCase()
-      )
-      .thumbnailUrl(trimOrNull(req.thumbnailUrl()))
-      .published(false)
-      .instructorId(instructorId)
-      .videoProvider(VideoProvider.YOUTUBE)
-      .videoUrl(y.canonicalUrl())
-      .videoId(y.videoId())
-      .videoVisibility(VideoVisibility.UNLISTED)
-      .build();
+        .title(req.title().trim())
+        .subtitle(trimOrNull(req.subtitle()))
+        .description(trimOrNull(req.description()))
+        .category(trimOrNull(req.category()))
+        .level(trimOrNull(req.level()))
+        .price(req.price())
+        .currency((req.currency() == null || req.currency().isBlank())
+            ? "INR"
+            : req.currency().trim().toUpperCase()
+        )
+        .thumbnailUrl(trimOrNull(req.thumbnailUrl()))
+        .published(false)
+
+        // ✅ MATCH DB COLUMN
+        .instructorId(instructorId)
+
+        .videoProvider(VideoProvider.YOUTUBE)
+        .videoUrl(y.canonicalUrl())
+        .videoId(y.videoId())
+        .videoVisibility(VideoVisibility.UNLISTED)
+        .build();
 
     return courseRepo.save(c);
   }
@@ -53,7 +56,7 @@ public class MentorCourseService {
   public Course update(Long instructorId, Long courseId, MentorCourseController.UpdateCourseRequest req) {
 
     Course c = courseRepo.findById(courseId)
-      .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
 
     if (!c.getInstructorId().equals(instructorId)) {
       throw new IllegalArgumentException("You do not own this course");

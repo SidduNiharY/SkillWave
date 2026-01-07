@@ -1,44 +1,76 @@
 package com.skillwave.mentor;
 
+import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Tiny helper to accept either a full YouTube URL or a raw video id.
- * Supports:
- *  - https://www.youtube.com/watch?v=VIDEO_ID
- *  - https://youtu.be/VIDEO_ID
- *  - VIDEO_ID
- */
 public record YoutubeParse(String videoId, String canonicalUrl) {
 
-  // YouTube ids are typically 11 chars; be permissive but safe.
-  private static final Pattern WATCH = Pattern.compile("[?&]v=([A-Za-z0-9_-]{6,})");
-  private static final Pattern SHORT = Pattern.compile("youtu\\.be/([A-Za-z0-9_-]{6,})");
-  private static final Pattern EMBED = Pattern.compile("youtube\\.com/(?:embed|shorts)/([A-Za-z0-9_-]{6,})");
-  private static final Pattern RAW = Pattern.compile("^[A-Za-z0-9_-]{6,}$");
+  // YouTube video id is usually 11 chars: letters, numbers, - _
+  private static final Pattern ID_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{11}$");
+
+  private static final Pattern WATCH_V_PATTERN =
+      Pattern.compile("[?&]v=([a-zA-Z0-9_-]{11})");
+
+  private static final Pattern SHORTS_PATTERN =
+      Pattern.compile("/shorts/([a-zA-Z0-9_-]{11})");
+
+  private static final Pattern EMBED_PATTERN =
+      Pattern.compile("/embed/([a-zA-Z0-9_-]{11})");
+
+  private static final Pattern YOUTU_BE_PATTERN =
+      Pattern.compile("youtu\\.be/([a-zA-Z0-9_-]{11})");
 
   public static YoutubeParse from(String input) {
-    if (input == null) throw new IllegalArgumentException("YouTube URL is required");
-    String s = input.trim();
-    if (s.isEmpty()) throw new IllegalArgumentException("YouTube URL is required");
-
-    String id = extractId(s);
-    if (id == null) {
+    if (input == null) {
       throw new IllegalArgumentException("Invalid YouTube link. Paste a YouTube video URL or video id.");
     }
-    return new YoutubeParse(id, "https://www.youtube.com/watch?v=" + id);
+
+    String s = input.trim();
+    if (s.isBlank()) {
+      throw new IllegalArgumentException("Invalid YouTube link. Paste a YouTube video URL or video id.");
+    }
+
+    // 1) raw id support
+    if (ID_PATTERN.matcher(s).matches()) {
+      return new YoutubeParse(s, canonical(s));
+    }
+
+    // 2) try common regex extracts (works even if URL parse fails)
+    String id =
+        firstMatch(WATCH_V_PATTERN, s,
+        firstMatch(SHORTS_PATTERN, s,
+        firstMatch(EMBED_PATTERN, s,
+        firstMatch(YOUTU_BE_PATTERN, s, null))));
+
+    if (id != null) {
+      return new YoutubeParse(id, canonical(id));
+    }
+
+    // 3) final fallback: parse as URI and read query param v=...
+    try {
+      URI uri = URI.create(s);
+      String query = uri.getQuery(); // v=VIDEO_ID&...
+      if (query != null) {
+        Matcher m = WATCH_V_PATTERN.matcher("?" + query);
+        if (m.find()) {
+          id = m.group(1);
+          return new YoutubeParse(id, canonical(id));
+        }
+      }
+    } catch (Exception ignored) {
+      // ignore and throw below
+    }
+
+    throw new IllegalArgumentException("Invalid YouTube link. Paste a YouTube video URL or video id.");
   }
 
-  private static String extractId(String s) {
-    Matcher m;
-    m = WATCH.matcher(s);
-    if (m.find()) return m.group(1);
-    m = SHORT.matcher(s);
-    if (m.find()) return m.group(1);
-    m = EMBED.matcher(s);
-    if (m.find()) return m.group(1);
-    if (RAW.matcher(s).matches()) return s;
-    return null;
+  private static String canonical(String videoId) {
+    return "https://www.youtube.com/watch?v=" + videoId;
+  }
+
+  private static String firstMatch(Pattern p, String s, String fallback) {
+    Matcher m = p.matcher(s);
+    return m.find() ? m.group(1) : fallback;
   }
 }

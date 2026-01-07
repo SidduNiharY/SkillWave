@@ -26,7 +26,7 @@ export default function CoursePage() {
         <h2 className="text-xl font-semibold">Course not found</h2>
         <p className="mt-2 text-base-content/70">Return to catalog.</p>
         <div className="mt-6">
-          <Link to="/">
+          <Link to="/explore">
             <Button>Back</Button>
           </Link>
         </div>
@@ -34,15 +34,29 @@ export default function CoursePage() {
     );
   }
 
-  const price = ((data.priceCents ?? 0) / 100).toFixed(2);
+  // ✅ Support both backend shapes:
+  // - new backend: price (INR)
+  // - old backend: priceCents (paise/cents)
+  const rawPrice =
+    data.price != null
+      ? Number(data.price)
+      : data.priceCents != null
+      ? Number(data.priceCents) / 100
+      : 0;
+
+  const priceText = Number.isFinite(rawPrice) ? rawPrice.toFixed(2) : "0.00";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
       <PageHeader
         title="Course Details"
         subtitle="This is a polished course page. Next we’ll plug in checkout + enrollment."
         right={
-          <Link to="/">
+          <Link to="/explore">
             <Button variant="ghost">← Back to catalog</Button>
           </Link>
         }
@@ -63,7 +77,7 @@ export default function CoursePage() {
             <div className="text-right">
               <div className="text-sm text-base-content/70">Price</div>
               <div className="text-2xl font-bold">
-                {price} {data.currency || "INR"}
+                {priceText} {data.currency || "INR"}
               </div>
             </div>
           </div>
@@ -76,7 +90,11 @@ export default function CoursePage() {
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <Button
               className="sm:w-60"
-              onClick={() => toast.message("Next: connect to /api/purchases and unlock access.")}
+              onClick={() =>
+                toast.message(
+                  "Next: connect to /api/purchases and unlock access."
+                )
+              }
             >
               Buy now
             </Button>

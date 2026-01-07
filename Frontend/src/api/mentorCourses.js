@@ -1,16 +1,26 @@
-import { http } from "./http.js";
+// src/api/mentorCourses.js
+import http from "./http.js";
 
+/**
+ * Mentor: list own courses
+ */
 export async function listMyCourses() {
-  const { data } = await http.get("/api/mentor/courses/mine");
-  return data;
+  const res = await http.get("/api/mentor/courses/mine");
+  return res.data;
 }
 
+/**
+ * Mentor: create course (REAL DB SAVE)
+ */
 export async function createCourse(payload) {
-  const { data } = await http.post("/api/mentor/courses", payload);
-  return data;
+  const res = await http.post("/api/mentor/courses", payload);
+  return res.data;
 }
 
+/**
+ * Mentor: update course (publish/unpublish)
+ */
 export async function updateCourse(id, payload) {
-  const { data } = await http.put(`/api/mentor/courses/${id}`, payload);
-  return data;
+  const res = await http.put(`/api/mentor/courses/${id}`, payload);
+  return res.data;
 }

@@ -2,82 +2,73 @@ package com.skillwave.catalog;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "courses")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Course {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, length = 200)
+  @Column(nullable = false)
   private String title;
 
-  @Column(length = 400)
   private String subtitle;
 
   @Column(columnDefinition = "text")
   private String description;
 
-  @Column(length = 80)
   private String category;
 
-  @Column(length = 40)
   private String level;
-
-  @Column(nullable = false)
-  private Long instructorId;
 
   @Column(nullable = false)
   private Integer price;
 
-  @Column(nullable = false, length = 10)
+  @Column(nullable = false)
   private String currency;
 
-  @Column(length = 1024)
   private String thumbnailUrl;
 
   @Column(nullable = false)
   private boolean published;
 
+  // ✅ SINGLE SOURCE OF TRUTH
+  @Column(name = "instructor_id", nullable = false)
+  private Long instructorId;
+
+  // 🎥 Video
   @Enumerated(EnumType.STRING)
   private VideoProvider videoProvider;
 
-  @Column(length = 1024)
   private String videoUrl;
 
-  @Column(length = 32)
   private String videoId;
 
   @Enumerated(EnumType.STRING)
   private VideoVisibility videoVisibility;
 
   @Column(nullable = false, updatable = false)
-  private Instant createdAt;
+  private OffsetDateTime createdAt;
 
   @Column(nullable = false)
-  private Instant updatedAt;
+  private OffsetDateTime updatedAt;
 
   @PrePersist
-  void prePersist() {
-    Instant now = Instant.now();
-    createdAt = now;
-    updatedAt = now;
-
-    if (currency == null || currency.isBlank()) currency = "INR";
+  void onCreate() {
+    createdAt = OffsetDateTime.now();
+    updatedAt = createdAt;
   }
 
   @PreUpdate
-  void preUpdate() {
-    updatedAt = Instant.now();
-    if (currency == null || currency.isBlank()) currency = "INR";
+  void onUpdate() {
+    updatedAt = OffsetDateTime.now();
   }
 }

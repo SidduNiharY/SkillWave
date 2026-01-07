@@ -10,11 +10,11 @@ export default function DashboardRedirect() {
 
   const role = user?.role;
 
-  // ✅ mentor/admin goes to mentor area
+  // Mentor/Admin → mentor dashboard
   if (role === "MENTOR" || role === "ADMIN") {
     return <Navigate to="/mentor/dashboard" replace />;
   }
 
-  // ✅ student stays in student dashboard
+  // Default → student dashboard
   return <Navigate to="/student/dashboard" replace />;
-}
+}33

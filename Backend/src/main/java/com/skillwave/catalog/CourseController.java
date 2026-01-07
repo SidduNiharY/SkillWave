@@ -10,15 +10,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CourseController {
 
-  private final CourseService service;
+  private final CourseRepository courseRepo;
 
+  // ✅ Public catalog: only published
   @GetMapping
-  public List<Course> list() {
-    return service.listPublished();
+  public List<Course> listPublished() {
+    return courseRepo.findByPublishedTrueOrderByCreatedAtDesc();
   }
 
+  // ✅ Public course page: only published
   @GetMapping("/{id}")
-  public Course get(@PathVariable Long id) {
-    return service.getCourse(id);
+  public Course getPublished(@PathVariable("id") Long id) {
+    return courseRepo.findByIdAndPublishedTrue(id)
+      .orElseThrow(() -> new IllegalArgumentException("Course not found"));
   }
 }

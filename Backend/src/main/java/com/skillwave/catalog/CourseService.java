@@ -1,8 +1,8 @@
 package com.skillwave.catalog;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -10,13 +10,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CourseService {
 
-  private final CourseRepository repo;
+  private final CourseRepository courseRepo;
 
+  /**
+   * Public catalog list (students see only published courses)
+   */
+  @Transactional(readOnly = true)
   public List<Course> listPublished() {
-    return repo.findByPublishedTrueOrderByCreatedAtDesc();
+    return courseRepo.findByPublishedTrueOrderByCreatedAtDesc();
   }
 
-  public Course getCourse(Long id) {
-    return repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Course not found"));
+  /**
+   * Mentor list (mentor sees their own drafts + published)
+   */
+  @Transactional(readOnly = true)
+  public List<Course> listForMentor(Long instructorId) {
+    return courseRepo.findByInstructorIdOrderByCreatedAtDesc(instructorId);
   }
 }

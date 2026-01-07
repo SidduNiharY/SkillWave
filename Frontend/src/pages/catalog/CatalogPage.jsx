@@ -33,7 +33,7 @@ export default function CatalogPage() {
         subtitle="Recorded courses now. Live cohorts and 1:1 sessions coming next."
         right={
           <div className="join w-full md:w-[360px]">
-            <button className="btn join-item btn-ghost">
+            <button className="btn join-item btn-ghost" type="button">
               <Search size={16} />
             </button>
             <input
@@ -71,7 +71,7 @@ export default function CatalogPage() {
       {!isLoading && !isError && courses.length === 0 && (
         <EmptyState
           title="No courses found"
-          subtitle="Create/seed courses in backend or change search."
+          subtitle="Only PUBLISHED courses appear here. Publish your course from Mentor → My Courses."
           actionLabel="Clear search"
           onAction={() => setQ("")}
         />
@@ -86,8 +86,9 @@ export default function CatalogPage() {
                   <Badge variant={c.published ? "success" : "warning"}>
                     {c.published ? "Published" : "Draft"}
                   </Badge>
+
                   <span className="text-sm text-base-content/70">
-                    {((c.priceCents ?? 0) / 100).toFixed(2)} {c.currency || "INR"}
+                    {(c.price ?? 0)} {c.currency || "INR"}
                   </span>
                 </div>
 

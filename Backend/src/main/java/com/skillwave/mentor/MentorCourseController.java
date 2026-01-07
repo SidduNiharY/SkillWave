@@ -2,9 +2,8 @@ package com.skillwave.mentor;
 
 import com.skillwave.catalog.Course;
 import com.skillwave.catalog.CourseRepository;
-import com.skillwave.catalog.VideoProvider;
-import com.skillwave.catalog.VideoVisibility;
 import com.skillwave.user.Role;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +18,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MentorCourseController {
 
+  private final MentorCourseService mentorCourseService;
+  
   private final CourseRepository courseRepo;
 
   @GetMapping("/mine")
@@ -27,39 +28,20 @@ public class MentorCourseController {
     requireMentor(jwt);
 
     Long userId = Long.parseLong(jwt.getSubject());
-    return courseRepo.findByInstructorIdOrderByCreatedAtDesc(userId);
+    return mentorCourseService.myCourses(userId);
   }
 
   @PostMapping
-  public Course create(Authentication auth, @RequestBody CreateCourseRequest req) {
+  public Course create(Authentication auth, @Valid @RequestBody CreateCourseRequest req) {
     Jwt jwt = (Jwt) auth.getPrincipal();
     requireMentor(jwt);
 
     Long userId = Long.parseLong(jwt.getSubject());
-    YoutubeParse y = YoutubeParse.from(req.youtubeUrl());
-
-    Course c = Course.builder()
-      .title(req.title().trim())
-      .subtitle(trimOrNull(req.subtitle()))
-      .description(trimOrNull(req.description()))
-      .category(trimOrNull(req.category()))
-      .level(trimOrNull(req.level()))
-      .price(req.price())
-      .currency((req.currency() == null || req.currency().isBlank()) ? "INR" : req.currency().trim().toUpperCase())
-      .thumbnailUrl(trimOrNull(req.thumbnailUrl()))
-      .published(false)
-      .instructorId(userId)
-      .videoProvider(VideoProvider.YOUTUBE)
-      .videoUrl(y.canonicalUrl())
-      .videoId(y.videoId())
-      .videoVisibility(VideoVisibility.UNLISTED)
-      .build();
-
-    return courseRepo.save(c);
+    return mentorCourseService.create(userId, req);
   }
 
-  @PutMapping("/{id}")
-  public Course update(Authentication auth, @PathVariable Long id, @RequestBody UpdateCourseRequest req) {
+  @GetMapping("/{id}")
+  public Course getOne(Authentication auth, @PathVariable("id") Long id) {
     Jwt jwt = (Jwt) auth.getPrincipal();
     requireMentor(jwt);
 
@@ -71,34 +53,7 @@ public class MentorCourseController {
     if (!c.getInstructorId().equals(userId)) {
       throw new IllegalArgumentException("You do not own this course");
     }
-
-    if (req.title() != null && !req.title().isBlank()) c.setTitle(req.title().trim());
-    if (req.subtitle() != null) c.setSubtitle(trimOrNull(req.subtitle()));
-    if (req.description() != null) c.setDescription(trimOrNull(req.description()));
-    if (req.category() != null) c.setCategory(trimOrNull(req.category()));
-    if (req.level() != null) c.setLevel(trimOrNull(req.level()));
-    if (req.price() != null) c.setPrice(req.price());
-    if (req.currency() != null && !req.currency().isBlank()) c.setCurrency(req.currency().trim().toUpperCase());
-    if (req.thumbnailUrl() != null) c.setThumbnailUrl(trimOrNull(req.thumbnailUrl()));
-
-    if (req.youtubeUrl() != null) {
-      if (req.youtubeUrl().isBlank()) {
-        c.setVideoProvider(null);
-        c.setVideoUrl(null);
-        c.setVideoId(null);
-        c.setVideoVisibility(null);
-      } else {
-        YoutubeParse y = YoutubeParse.from(req.youtubeUrl());
-        c.setVideoProvider(VideoProvider.YOUTUBE);
-        c.setVideoUrl(y.canonicalUrl());
-        c.setVideoId(y.videoId());
-        c.setVideoVisibility(VideoVisibility.UNLISTED);
-      }
-    }
-
-    if (req.published() != null) c.setPublished(req.published());
-
-    return courseRepo.save(c);
+    return c;
   }
 
   private static void requireMentor(Jwt jwt) {
@@ -111,34 +66,28 @@ public class MentorCourseController {
     }
   }
 
-  private static String trimOrNull(String s) {
-    if (s == null) return null;
-    String t = s.trim();
-    return t.isBlank() ? null : t;
-  }
-
   public record CreateCourseRequest(
-    @NotBlank String title,
-    String subtitle,
-    String description,
-    String category,
-    String level,
-    @NotNull Integer price,
-    String currency,
-    String thumbnailUrl,
-    @NotBlank String youtubeUrl
+      @NotBlank String title,
+      String subtitle,
+      String description,
+      String category,
+      String level,
+      @NotNull Integer price,
+      String currency,
+      String thumbnailUrl,
+      @NotBlank String youtubeUrl
   ) {}
 
   public record UpdateCourseRequest(
-    String title,
-    String subtitle,
-    String description,
-    String category,
-    String level,
-    Integer price,
-    String currency,
-    String thumbnailUrl,
-    String youtubeUrl,
-    Boolean published
+      String title,
+      String subtitle,
+      String description,
+      String category,
+      String level,
+      Integer price,
+      String currency,
+      String thumbnailUrl,
+      String youtubeUrl,
+      Boolean published
   ) {}
 }

@@ -32,6 +32,10 @@ import OneOnOneBookingPage from "../pages/sessions/OneOnOneBookingPage.jsx";
 import MySessionsPage from "../pages/sessions/MySessionsPage.jsx";
 import MentorSessionsPage from "../pages/mentor/MentorSessionsPage.jsx";
 
+import MentorSlotsPage from "../pages/mentor/MentorSlotsPage.jsx";
+import MentorBookingsPage from "../pages/mentor/MentorBookingsPage.jsx";
+import MyBookingsPage from "../pages/sessions/MyBookingsPage.jsx";
+
 export default function Routes() {
   return (
     <RRRoutes>
@@ -131,6 +135,33 @@ export default function Routes() {
             <RoleRoute allow={["MENTOR", "ADMIN"]}>
               <MentorSessionsPage />
             </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/my-bookings"
+          element={
+            <ProtectedRoute>
+              <MyBookingsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mentor/slots"
+          element={
+            <ProtectedRoute allowRoles={["MENTOR", "ADMIN"]}>
+              <MentorSlotsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mentor/bookings"
+          element={
+            <ProtectedRoute allowRoles={["MENTOR", "ADMIN"]}>
+              <MentorBookingsPage />
+            </ProtectedRoute>
           }
         />
 

@@ -1,126 +1,151 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/common/PageHeader.jsx";
-import { Card, CardBody, CardTitle } from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
-import { Search } from "lucide-react";
-import BookOneOnOneModal from "./components/BookOneOnOneModal.jsx";
+import { toast } from "sonner";
+import { mentorAvailableSlots, bookSlot } from "../../api/mentorship.js";
 
-/**
- * MVP: static list for now.
- * Later: fetch from /api/mentors
- */
-const MOCK_MENTORS = [
-  {
-    id: 1,
-    name: "Siddhu Nihar",
-    title: "Spring Boot + System Design",
-    price30: 499,
-    price60: 899,
-    tags: ["Backend", "Spring", "Interviews"],
-    about: "I help students build real projects + crack interviews.",
-  },
-  {
-    id: 2,
-    name: "Ananya",
-    title: "React + UI Polish",
-    price30: 399,
-    price60: 749,
-    tags: ["Frontend", "React", "Portfolio"],
-    about: "I help you build premium UI and structure your portfolio.",
-  },
-];
+function fmt(iso) {
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
 
 export default function OneOnOnePage() {
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const [selectedMentor, setSelectedMentor] = useState(null);
+  const qc = useQueryClient();
 
-  const mentors = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return MOCK_MENTORS;
-    return MOCK_MENTORS.filter((m) =>
-      `${m.name} ${m.title} ${(m.tags || []).join(" ")}`
-        .toLowerCase()
-        .includes(term)
-    );
-  }, [q]);
+  // For MVP we input mentorId manually (later: mentor list)
+  const [mentorId, setMentorId] = useState("");
+  const [note, setNote] = useState("");
 
-  const onBook = (m) => {
-    setSelectedMentor(m);
-    setOpen(true);
+  const canSearch = useMemo(() => /^\d+$/.test(mentorId.trim()), [mentorId]);
+
+  const {
+    data: slots,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["mentor-available-slots", mentorId],
+    queryFn: () => mentorAvailableSlots(mentorId.trim()),
+    enabled: false, // we search manually
+  });
+
+  const book = useMutation({
+    mutationFn: (slotId) =>
+      bookSlot({
+        slotId,
+        note: note?.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success("Booked successfully!");
+      qc.invalidateQueries({ queryKey: ["mentor-available-slots", mentorId] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+      refetch();
+    },
+    onError: (e) => {
+      toast.error(e?.response?.data?.message || e?.message || "Booking failed");
+    },
+  });
+
+  const onSearch = async () => {
+    if (!canSearch) return toast.error("Enter a valid Mentor ID (number)");
+    await refetch();
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+    <div className="space-y-8">
       <PageHeader
-        title="1-on-1 Mentorship"
-        subtitle="Book a private session with mentors. (MVP UI now — backend next)"
-        right={
-          <div className="join w-full md:w-[360px]">
-            <button className="btn join-item btn-ghost">
-              <Search size={16} />
-            </button>
-            <input
-              className="input input-bordered join-item w-full"
-              placeholder="Search mentors…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-        }
+        title="1:1 Mentorship"
+        subtitle="Pick a mentor slot and book instantly."
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {mentors.map((m) => (
-          <Card key={m.id} className="rounded-3xl">
-            <CardBody>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <CardTitle className="line-clamp-1">{m.name}</CardTitle>
-                  <p className="mt-1 text-sm text-base-content/70 line-clamp-2">{m.title}</p>
-                </div>
-                <Badge variant="info">Mentor</Badge>
-              </div>
+      {/* Search mentor */}
+      <div className="rounded-3xl bg-base-100 p-6 shadow-sm space-y-4">
+        <div className="text-lg font-semibold">Find mentor slots</div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(m.tags || []).map((t) => (
-                  <span key={t} className="badge badge-outline">
-                    {t}
-                  </span>
-                ))}
-              </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <input
+            className="input input-bordered rounded-2xl md:col-span-1"
+            placeholder="Mentor ID (ex: 3)"
+            value={mentorId}
+            onChange={(e) => setMentorId(e.target.value)}
+          />
+          <input
+            className="input input-bordered rounded-2xl md:col-span-2"
+            placeholder="Note (optional): e.g., Spring Security help"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
 
-              <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/70">
-                <div className="flex items-center justify-between">
-                  <span>30 min</span>
-                  <span className="font-semibold">INR {m.price30}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span>60 min</span>
-                  <span className="font-semibold">INR {m.price60}</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <Button className="flex-1" onClick={() => onBook(m)}>
-                  Book
-                </Button>
-                <Button className="flex-1" variant="outline" onClick={() => onBook(m)}>
-                  View slots
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
+        <div className="flex gap-2">
+          <Button variant="gradient" onClick={onSearch} disabled={!canSearch}>
+            Search Slots
+          </Button>
+          <Button variant="outline" onClick={() => setNote("")}>
+            Clear note
+          </Button>
+        </div>
       </div>
 
-      <BookOneOnOneModal
-        open={open}
-        mentor={selectedMentor}
-        onClose={() => setOpen(false)}
-      />
-    </motion.div>
+      {/* Results */}
+      {isLoading ? (
+        <div className="rounded-3xl bg-base-100 p-10 shadow">Loading slots…</div>
+      ) : isError ? (
+        <div className="rounded-3xl bg-base-100 p-10 shadow">
+          Failed to load slots. Check backend and mentorId.
+        </div>
+      ) : Array.isArray(slots) && slots.length === 0 ? (
+        <div className="rounded-3xl bg-base-100 p-10 shadow text-center">
+          <div className="text-lg font-semibold">No available slots</div>
+          <div className="mt-2 text-base-content/70">
+            Mentor has not created slots yet (or all are booked).
+          </div>
+        </div>
+      ) : Array.isArray(slots) ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {slots.map((s) => (
+            <div
+              key={s.id}
+              className="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-bold">Slot #{s.id}</div>
+                <Badge variant="success">AVAILABLE</Badge>
+              </div>
+
+              <div className="mt-3 text-sm text-base-content/70 space-y-1">
+                <div>
+                  <span className="font-semibold">Start:</span> {fmt(s.startAt)}
+                </div>
+                <div>
+                  <span className="font-semibold">End:</span> {fmt(s.endAt)}
+                </div>
+                <div>
+                  <span className="font-semibold">Price:</span>{" "}
+                  {s.currency || "INR"} {s.price}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Button
+                  variant="gradient"
+                  loading={book.isPending}
+                  disabled={book.isPending}
+                  onClick={() => book.mutate(s.id)}
+                  fullWidth
+                >
+                  Book this slot
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
